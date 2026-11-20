@@ -29,6 +29,7 @@ main{max-width:560px;margin:0 auto;padding:12px 14px 40px}
 .lbl{font-size:11px;color:var(--ts);letter-spacing:.04em}
 .camrow{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
 #cam-name{font-weight:700;font-size:16px}#cam-mode{font-size:12px;color:var(--ts)}
+.field.fixed input{color:var(--am);font-weight:700}.row small.fixf{color:var(--am)}
 .chev{color:var(--am);font-size:22px}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .chip{background:var(--amd);color:var(--am);font-size:11px;font-weight:600;border-radius:10px;padding:2px 9px}
@@ -94,7 +95,7 @@ h2{font-size:14px;margin:0 0 8px}
     <div class="chips" id="chips"></div>
   </div>
   <div class="hint">空欄にした項目が計算ターゲットになります（2項目を入力）</div>
-  <div class="field" id="box-f"><div class="in"><label for="in-f">焦点距離 f</label><input id="in-f" inputmode="decimal" autocomplete="off" placeholder="空欄で計算"><div class="pv" id="pv-f"></div></div><span class="unit">mm</span></div>
+  <div class="field" id="box-f"><div class="in"><label for="in-f" id="lbl-f">焦点距離 f</label><input id="in-f" inputmode="decimal" autocomplete="off" placeholder="空欄で計算"><div class="pv" id="pv-f"></div></div><span class="unit">mm</span></div>
   <div class="field" id="box-L"><div class="in"><label for="in-L">撮影距離 L</label><input id="in-L" inputmode="decimal" autocomplete="off" placeholder="空欄で計算"><div class="pv" id="pv-L"></div></div><span class="unit">m</span></div>
   <div class="field" id="box-R"><div class="in"><label for="in-R">空間分解能 R</label><input id="in-R" inputmode="decimal" autocomplete="off" placeholder="空欄で計算"><div class="pv" id="pv-R"></div></div><span class="unit">mm/px</span></div>
   <div class="btns"><button class="btn sec" id="btn-clear">クリア</button><button class="btn" id="btn-calc" disabled>⚡ 計算</button></div>

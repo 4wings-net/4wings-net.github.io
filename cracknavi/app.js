@@ -65,6 +65,19 @@ const PRESETS = [
   ['Zenmuse P1', '45MP', 35.9, 8192, 1000, null],
   ['Zenmuse H30T Wide', '40MP', 9.4, 8000, 1000, 6.72],
   ['Zenmuse H30T Zoom', '48MP', 6.4, 7728, 1000, null],
+  // DJI Matrice: 画素数・最短撮影距離・35mm換算焦点距離・光学倍率はDJI公式仕様。
+  // 各カメラは単焦点で、光学になるのは各カメラの等倍のみ（それ以外はデジタルズーム）。
+  // センサー幅は公称インチサイズからの換算値。固定焦点距離 = 35mm換算値 × (Sw / 36) なので、
+  // R = L×36 / (35mm換算値 × Pw) となり、センサー幅の換算誤差は計算結果に影響しない。
+  ['DJI Matrice 4E', 'Wide 1倍・24mm', 17.3, 5280, 1000, 11.5333],
+  ['DJI Matrice 4E', 'Medium Tele 3倍・70mm', 9.6, 8064, 3000, 18.6667],
+  ['DJI Matrice 4E', 'Tele 7倍・168mm', 8.8, 8192, 3000, 41.0667],
+  ['DJI Matrice 4T', 'Wide 1倍・24mm', 9.6, 8064, 1000, 6.4],
+  ['DJI Matrice 4T', 'Medium Tele 3倍・70mm', 9.6, 8064, 3000, 18.6667],
+  ['DJI Matrice 4T', 'Tele 7倍・168mm', 8.8, 8192, 3000, 41.0667],
+  ['DJI Matrice 5T', 'Wide 1倍・23.5mm', 13.1, 8192, 600, 8.5514],
+  ['DJI Matrice 5T', 'Medium Tele 3倍・70mm', 10.0, 8192, 3000, 19.4444],
+  ['DJI Matrice 5T', 'Tele 11倍・252mm', 8.8, 8192, 5000, 61.6],
   ['DJI Pocket 2', '16MP', 7.6, 4000, 600, 4.22],
   ['DJI Pocket 2', '64MP', 7.6, 9216, 600, 4.22],
   ['GoPro 10', '5.3K', 7.7, 5312, 300, 3.04],
@@ -84,6 +97,11 @@ function makerOf(name) {
   return 'その他';
 }
 const keyOf = c => c.name + '|' + c.mode;
+/* 単焦点（焦点距離固定）機材の表示用テキスト。例: "f固定 6.4mm（35mm換算 24mm）" */
+function fixedFocalLabel(c) {
+  if (!c || !c.focal) return '';
+  return `f固定 ${fmt(c.focal, 4)}mm（35mm換算 ${fmt(c.focal * 36 / c.sw, 1)}mm）`;
+}
 
 /* ===== 状態・保存 ===== */
 const STORE = 'cracknavi.v1';
@@ -143,7 +161,11 @@ if (typeof document !== 'undefined') {
     const cam = selectedCam();
     $('cam-name').textContent = cam ? cam.name : '機材を選択してください';
     $('cam-mode').textContent = cam ? cam.mode : '';
-    $('chips').innerHTML = cam ? `<span class="chip">Sw:${cam.sw}mm</span><span class="chip">Pw:${cam.pw}px</span><span class="chip">最短:${Math.round(cam.min)}mm</span>` : '';
+    $('chips').innerHTML = cam ? `<span class="chip">Sw:${cam.sw}mm</span><span class="chip">Pw:${cam.pw}px</span><span class="chip">最短:${Math.round(cam.min)}mm</span>${cam.focal ? `<span class="chip">${escapeHtml(fixedFocalLabel(cam))}</span>` : ''}` : '';
+    // 単焦点機材は焦点距離を固定（デジタルズーム域を使わせない）
+    const fixedF = !!(cam && cam.focal);
+    if (fixedF && state.f !== fmt(cam.focal, 4)) state.f = fmt(cam.focal, 4);
+    $('lbl-f').textContent = fixedF ? '焦点距離 f（単焦点のため固定）' : '焦点距離 f';
     const prev = currentResult();
     const res = state.committed ? prev : null;
     [['f', 'f', 4], ['L', 'L', 4], ['R', 'R', 6]].forEach(([k, id, dec]) => {
@@ -151,7 +173,8 @@ if (typeof document !== 'undefined') {
       const isRes = res && res.target === k;
       box.classList.toggle('res', !!isRes);
       box.classList.toggle('warn', !!(isRes && res.warn));
-      inp.readOnly = !!isRes;
+      inp.readOnly = !!isRes || (k === 'f' && fixedF);
+      box.classList.toggle('fixed', k === 'f' && fixedF && !isRes);
       const nv = isRes ? fmt(res.value, dec) : state[k];
       if (inp.value !== nv) inp.value = nv;
       const unit = { f: 'mm', L: 'm', R: 'mm/px' }[k];
@@ -198,7 +221,8 @@ if (typeof document !== 'undefined') {
     const ok = eq && sw;
     $('conv-out').textContent = ok ? fmt(calc35mmToActual(eq, sw), 4) + ' mm' : '—';
     $('conv-note').textContent = ok ? `${eq}mm × (${sw} ÷ 36)` : '';
-    $('btn-usef').disabled = !ok;
+    const selC = selectedCam();
+    $('btn-usef').disabled = !ok || !!(selC && selC.focal);  // 単焦点機材の選択中は f を変更しない
   }
 
   /* ---- 機材選択ピッカー ---- */
@@ -216,7 +240,7 @@ if (typeof document !== 'undefined') {
       const list = groups[pickMaker] || [];
       $('pick-title').textContent = `${pickMaker}（${list.length}件）`;
       $('pick-back').hidden = false;
-      body.innerHTML = list.map(c => `<button class="row ${keyOf(c) === state.selected ? 'sel' : ''}" data-key="${escapeHtml(keyOf(c))}"><div><b>${escapeHtml(c.name)}</b><small>[${escapeHtml(c.mode)}]  Sw:${c.sw}mm  Pw:${c.pw}px</small></div></button>`).join('');
+      body.innerHTML = list.map(c => `<button class="row ${keyOf(c) === state.selected ? 'sel' : ''}" data-key="${escapeHtml(keyOf(c))}"><div><b>${escapeHtml(c.name)}</b><small>[${escapeHtml(c.mode)}]  Sw:${c.sw}mm  Pw:${c.pw}px</small>${c.focal ? `<small class="fixf">${escapeHtml(fixedFocalLabel(c))}</small>` : ''}</div></button>`).join('');
     }
   }
   function selectCamera(key) {
